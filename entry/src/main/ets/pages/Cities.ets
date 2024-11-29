@@ -51,7 +51,7 @@ struct Cities {
         .fontSize(20)
         .fontColor([Color.White])
         .fontWeight(FontWeight.Bold)
-        .margin({left: '30%'})
+        .margin({left: '20%'})
         .opacity(item.Name==this.CurrentLocationName?1:0)
       Column(){
         Row(){
@@ -121,7 +121,6 @@ struct Cities {
             this.Card(item)
           }
           .swipeAction({ end: this.ItemEnd.bind(this, item), edgeEffect: SwipeEdgeEffect.None })
-          // .transition({ type: TransitionType.Delete, translate: { x: 200 }})
           .transition(this.effect)
         }, (item: ShownCity) => item.Location)
       }
@@ -143,7 +142,9 @@ struct Cities {
       .height('10%')
       .onClick(()=>{
         console.info('模拟器添加城市')
-
+        router.pushUrl({
+          url: 'pages/AddCity'
+        })
       })
     }
     .width('100%')
