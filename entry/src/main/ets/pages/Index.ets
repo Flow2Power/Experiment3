@@ -1,23 +1,21 @@
-import { CityInfo, DailyWeather, HourlyWeather, RealtimeAirQuality, RealtimeWeather,
+import { DailyWeather, HourlyWeather, RealtimeAirQuality, RealtimeWeather,
   ShownCity,
-  WeatherData,
   WeatherIndex } from '../Model/DataInterface';
 import NetworkDataFetcher from '../Model/NetworkDataFetcher';
 import StoreManager from '../Model/StoreManager';
-import { reqPermissionsFromUser } from '../ViewModel/PermissionsDialog';
-import { BusinessError } from '@kit.BasicServicesKit';
+import { router } from '@kit.ArkUI';
 
 @Entry
 @Component
 struct Index {
   // Scroll组件相关变量与用于控制显示与隐藏的状态变量
-  @State yOffset: number[] = []
+  @StorageLink('yOffset') yOffset: number[] = []
   private scroller: Scroller = new Scroller()
   // refresh容器组件相关状态变量
   @State isRefreshing: boolean = false
   @State ratio: number = 1
   // tabs容器组件相关状态变量
-  @State index: number = 0
+  @Prop index: number = 0
   // 页面信息显示相关的变量
   private CurrentTime:string= ''
   private windLevelTerms: string[] = [
@@ -35,58 +33,24 @@ struct Index {
   '暴风',
   '飓风'
 ];
-  private CurrentLocation: string = ""
+  @StorageLink('CurrentLocation') CurrentLocation: string = ""
   private context: CanvasRenderingContext2D = new CanvasRenderingContext2D(new RenderingContextSettings(true));
   private offContext: OffscreenCanvasRenderingContext2D = new OffscreenCanvasRenderingContext2D(600, 600, new RenderingContextSettings(true))
   private ItemWith: number = 80
   private ItemStart: number = 40
   //页面信息显示相关的状态变量
-  @State private CurrentWeathers: RealtimeWeather[] = []
-  @State private AllHourlyWeathers:Array<HourlyWeather[]> = []
-  @State private AllDailyWeathers:Array<DailyWeather[]> = []
-  @State private CurrentAirQualities:RealtimeAirQuality[] = []
-  @State private AllWeatherIndexes:Array<WeatherIndex[]> = []
-  @State private CurrentWeather:RealtimeWeather = {
-    obsTime: '',
-    temp: '',
-    feelsLike: '',
-    icon: '',
-    text: '',
-    wind360: '',
-    windDir: '',
-    windScale: 0,
-    windSpeed: '',
-    humidity: 0,
-    precip: '',
-    pressure: '',
-    vis: '',
-    cloud: '',
-    dew: '',
-    fxLink: ''
-  }
-  @State private CurrentAirQuality:RealtimeAirQuality = {
-    pubTime: '',
-    aqi: 0,
-    level: '',
-    category: '',
-    primary: '',
-    pm10: '',
-    pm2p5: '',
-    no2: '',
-    so2: '',
-    co: '',
-    o3: '',
-    fxLink: ''
-  }
-  @State ShownCities: ShownCity[] = [{
+  @StorageLink('CurrentWeathers') CurrentWeathers: RealtimeWeather[] = []
+  @StorageLink('AllHourlyWeathers') AllHourlyWeathers: Array<HourlyWeather[]> = []
+  @StorageLink('AllDailyWeathers') AllDailyWeathers: Array<DailyWeather[]> = []
+  @StorageLink('CurrentAirQualities') CurrentAirQualities: RealtimeAirQuality[] = []
+  @StorageLink('AllWeatherIndexes') AllWeatherIndexes: Array<WeatherIndex[]> = []
+  @StorageLink('ShownCities') ShownCities: ShownCity[] = [{
     id: null,
     Name: '定位中',
     Location: '0,0',
     LocationId: '101010100'
   }]
-  @State CurrentLocationName: string = ""
-  @State value1:number = 0
-  @State value2:number = 0
+  @StorageLink('CurrentLocationName') CurrentLocationName: string = ""
   aboutToAppear(): void {
     let CurrentDate = new Date()
     let hours=CurrentDate.getHours()
@@ -149,6 +113,7 @@ struct Index {
       let differenceInMilliseconds = Math.abs(date2?.getTime() - date1?.getTime());
       // 将时间差转换为分钟数
       differenceInMinutes = differenceInMilliseconds / (1000 * 60);
+      console.info('模拟器时间差：' + differenceInMinutes + '分钟');
     }catch (err){
     }
     return differenceInMinutes;
@@ -235,54 +200,7 @@ struct Index {
     });
     context.stroke();
   }
-  // 初始化函数
-  async Init(index: number) {
-    try {
-      // 获取当前城市经纬度
-      if(this.CurrentLocationName==""){
-        this.CurrentLocation = await reqPermissionsFromUser(getContext(this));
-        let CurrentCityInfo = await NetworkDataFetcher.getCityInfo(this.CurrentLocation)
-        this.CurrentLocationName = CurrentCityInfo[0].name
-      }
-      // 获取ShownCities
-      this.ShownCities = await StoreManager.getShownCities(getContext(this))
-      if (this.ShownCities.length == 0) {
-        let CityInfo: CityInfo[] = await NetworkDataFetcher.getCityInfo(this.CurrentLocation)
-        this.ShownCities.push({
-          id: null,
-          Name: CityInfo[0].name,
-          Location: CityInfo[0].lon + ',' + CityInfo[0].lat,
-          LocationId: CityInfo[0].id
-        })
-        this.CurrentLocationName = CityInfo[0].name
-        await StoreManager.addShownCity(getContext(this), this.ShownCities[0])
-      }
-      let city=this.ShownCities[index];
-      let locationId = city.LocationId;
-      let location = city.Location;
-      // 获取实时天气信息
-      let currentWeather = await NetworkDataFetcher.getRealtimeWeather(locationId);
-      // 获取逐小时天气预报
-      let hourlyWeather = await NetworkDataFetcher.getHourlyWeather(locationId);
-      // 获取每日天气预报
-      let dailyWeather = await NetworkDataFetcher.getDailyWeather(locationId);
-      // 获取实时空气质量信息
-      let airQuality = await NetworkDataFetcher.getAirQuality(location);
-      // 获取天气指数
-      let weatherIndex = await NetworkDataFetcher.getWeatherIndex(locationId);
-      return [{
-        currentWeather,
-        hourlyWeather,
-        dailyWeather,
-        airQuality,
-        weatherIndex
-      } as WeatherData];
-    }catch (err){
-      let error: BusinessError = err as BusinessError;
-      console.error(`模拟器获取数据失败: Code is ${error.code}, message is ${error.message}`);
-      return [];
-    }
-  }
+
   //构建菜单按钮
   @Builder menu() {
     SymbolGlyph($r('sys.symbol.dot_grid_2x2'))
@@ -292,18 +210,13 @@ struct Index {
       .bindMenu([
         {
           value: '管理城市',
-          action: async () => {
-            this.ShownCities[this.index]={
-              id: this.ShownCities[this.index].id,
-              Name: '北京',
-              Location: '116.41,39.92',
-              LocationId: '101010100'
-            }
-            await StoreManager.updateShownCity(getContext(this),this.ShownCities[this.index])
-            console.info('模拟器-更新数据'+JSON.stringify(this.ShownCities[this.index]))
+          action: () => {
+            router.pushUrl({
+              url: 'pages/Cities'
+            })
             console.info('模拟器-管理城市')
           }
-        },
+        },// 管理城市
         {
           value: '桌面天气',
           action: async () => {
@@ -319,7 +232,26 @@ struct Index {
               Location: '116.10538,39.93718',
               LocationId: '101011400'
             }as ShownCity)
+            this.yOffset.push(0)
+            let locationId = this.ShownCities[this.ShownCities.length-1].LocationId;
+            let location = this.ShownCities[this.ShownCities.length-1].Location;
+            // 获取实时天气信息
+            let currentWeather = await NetworkDataFetcher.getRealtimeWeather(locationId);
+            // 获取逐小时天气预报
+            let hourlyWeather = await NetworkDataFetcher.getHourlyWeather(locationId);
+            // 获取每日天气预报
+            let dailyWeather = await NetworkDataFetcher.getDailyWeather(locationId);
+            // 获取实时空气质量信息
+            let airQuality = await NetworkDataFetcher.getAirQuality(location);
+            // 获取天气指数
+            let weatherIndex = await NetworkDataFetcher.getWeatherIndex(locationId);
+            this.CurrentWeathers.push(currentWeather)
+            this.AllHourlyWeathers.push(hourlyWeather)
+            this.AllDailyWeathers.push(dailyWeather)
+            this.CurrentAirQualities.push(airQuality)
+            this.AllWeatherIndexes.push(weatherIndex)
             console.info('模拟器-桌面天气')
+            console.info('模拟器'+JSON.stringify(this.CurrentWeathers.length))
           }
         },
       ])
@@ -360,10 +292,25 @@ struct Index {
       this.ratio = 1 - Math.pow((offset / 100.0), 3)
       console.info('Refresh onOffsetChange offset is ' + offset)
     })
-    .onRefreshing(() => {
-      setTimeout(() => {
-        this.isRefreshing = false
-      }, 2000)
+    .onRefreshing(async () => {
+      let locationId = this.ShownCities[this.index].LocationId;
+      let location = this.ShownCities[this.index].Location;
+      // 获取实时天气信息
+      let currentWeather = await NetworkDataFetcher.getRealtimeWeather(locationId);
+      // 获取逐小时天气预报
+      let hourlyWeather = await NetworkDataFetcher.getHourlyWeather(locationId);
+      // 获取每日天气预报
+      let dailyWeather = await NetworkDataFetcher.getDailyWeather(locationId);
+      // 获取实时空气质量信息
+      let airQuality = await NetworkDataFetcher.getAirQuality(location);
+      // 获取天气指数
+      let weatherIndex = await NetworkDataFetcher.getWeatherIndex(locationId);
+      this.CurrentWeathers[this.index]=currentWeather
+      this.AllHourlyWeathers[this.index]=hourlyWeather
+      this.AllDailyWeathers[this.index]=dailyWeather
+      this.CurrentAirQualities[this.index]=airQuality
+      this.AllWeatherIndexes[this.index]=weatherIndex
+      this.isRefreshing=false
       console.log('模拟器onRefreshing')
     })
     .refreshOffset(64)
@@ -397,15 +344,15 @@ struct Index {
     .justifyContent(FlexAlign.SpaceBetween)
   }
   //空气质量半扇型进度条构建
-  @Builder CurrentAirQualityGaugeBuilder(){
+  @Builder CurrentAirQualityGaugeBuilder(index:number){
     Stack(){
-      Gauge({value:this.value1,max:500}){
+      Gauge({value:this.CurrentAirQualities[index]?.aqi,max:500}){
         Column(){
-          Text(this.CurrentAirQuality.category)
+          Text(this.CurrentAirQualities[index]?.category)
             .fontSize(20)
             .fontColor(Color.White)
             .fontWeight(FontWeight.Bold)
-          Text(`${this.CurrentAirQuality.aqi}`)
+          Text(`${this.CurrentAirQualities[index]?.aqi}`)
             .fontSize(40)
             .fontColor(Color.White)
             .fontWeight(FontWeight.Bold)
@@ -418,8 +365,8 @@ struct Index {
       .startAngle(210)
       .endAngle(150)
       .strokeWidth(10)
-      .colors([[Color.Green, this.value1/500], ['#99fdfdfd', 1 - this.value1/500]])
-      // .indicator(null)
+      .colors([[Color.Green, this.CurrentAirQualities[index]?.aqi/500], ['#99fdfdfd', 1 - this.CurrentAirQualities[index]?.aqi/500]])
+      .indicator(null)
       .trackShadow(null)
       .description(null)
       Row({space: 60}){
@@ -439,11 +386,11 @@ struct Index {
     .alignContent(Alignment.Bottom)
   }
   //舒适度半扇型进度条构建
-  @Builder ComfortGaugeBuilder(){
+  @Builder ComfortGaugeBuilder(index:number){
     Stack(){
-      Gauge({value:this.CurrentWeather.humidity,max:100}){
+      Gauge({value:this.CurrentWeathers[index]?.humidity,max:100}){
         Column(){
-          Text(`${this.CurrentWeather.humidity}%`)
+          Text(`${this.CurrentWeathers[index]?.humidity}%`)
             .fontSize(45)
             .fontColor(Color.White)
             .fontWeight(FontWeight.Bold)
@@ -456,7 +403,7 @@ struct Index {
       .startAngle(210)
       .endAngle(150)
       .strokeWidth(10)
-      .colors([[Color.White, this.CurrentWeather.humidity/100], ['#99fdfdfd', 1 - this.CurrentWeather.humidity/100]])
+      .colors([[Color.White, this.CurrentWeathers[index]?.humidity/100], ['#99fdfdfd', 1 - this.CurrentWeathers[index]?.humidity/100]])
       .indicator(null)
       .trackShadow(null)
       .description(null)
@@ -564,27 +511,7 @@ struct Index {
       Canvas(this.context)
         .width(this.ItemStart*2+this.ItemWith*6)
         .height(300)
-        .onReady(async ()=>{
-          let results =await this.Init(index)
-          results.forEach(result => {
-            if(this.ShownCities.length==this.CurrentWeathers.length){
-              this.CurrentWeathers[index]=result.currentWeather;
-              this.AllHourlyWeathers[index]=result.hourlyWeather;
-              this.AllDailyWeathers[index]=result.dailyWeather;
-              this.CurrentAirQualities[index]=result.airQuality;
-              this.AllWeatherIndexes[index]=result.weatherIndex;
-            }
-            else{
-              this.CurrentWeathers.push(result.currentWeather);
-              this.AllHourlyWeathers.push(result.hourlyWeather);
-              this.AllDailyWeathers.push(result.dailyWeather);
-              this.CurrentAirQualities.push(result.airQuality);
-              this.AllWeatherIndexes.push(result.weatherIndex);
-              this.yOffset.push(0)
-              this.CurrentWeather=result.currentWeather;
-              this.CurrentAirQuality=result.airQuality;
-            }
-          });
+        .onReady(()=>{
           this.render(this.context,index)
         })
     }
@@ -619,7 +546,7 @@ struct Index {
           .fontSize(15)
           .fontColor(Color.White)
           .fontWeight(FontWeight.Bold)
-        this.CurrentAirQualityGaugeBuilder()
+        this.CurrentAirQualityGaugeBuilder(index)
       }
       .width('40%')
       .alignItems(HorizontalAlign.Center)
@@ -702,7 +629,7 @@ struct Index {
             .fontSize(15)
             .fontColor(Color.White)
             .fontWeight(FontWeight.Bold)
-          this.ComfortGaugeBuilder()
+          this.ComfortGaugeBuilder(index)
         }
         .width('40%')
         .alignItems(HorizontalAlign.Center)
@@ -984,12 +911,7 @@ struct Index {
       }
       .onChange((index: number)=>{
         this.index = index
-        this.CurrentWeather = this.CurrentWeathers[index]
-        this.CurrentAirQuality = this.CurrentAirQualities[index]
-        this.value1 = this.CurrentAirQuality.aqi
-        console.info('模拟器value1'+JSON.stringify(this.value1))
         console.info(`模拟器切换到第${index}个Tab`)
-        console.info('模拟器CurrentWeather'+JSON.stringify(this.CurrentWeathers))
       })
       .barWidth('30%')
       .barHeight('5%')
