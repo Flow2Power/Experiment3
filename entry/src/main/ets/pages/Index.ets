@@ -15,7 +15,7 @@ struct Index {
   @State isRefreshing: boolean = false
   @State ratio: number = 1
   // tabs容器组件相关状态变量
-  @Prop index: number = 0
+  @State index: number = 0
   // 页面信息显示相关的变量
   private CurrentTime:string= ''
   private windLevelTerms: string[] = [
@@ -44,12 +44,7 @@ struct Index {
   @StorageLink('AllDailyWeathers') AllDailyWeathers: Array<DailyWeather[]> = []
   @StorageLink('CurrentAirQualities') CurrentAirQualities: RealtimeAirQuality[] = []
   @StorageLink('AllWeatherIndexes') AllWeatherIndexes: Array<WeatherIndex[]> = []
-  @StorageLink('ShownCities') ShownCities: ShownCity[] = [{
-    id: null,
-    Name: '定位中',
-    Location: '0,0',
-    LocationId: '101010100'
-  }]
+  @StorageLink('ShownCities') ShownCities: ShownCity[] = []
   @StorageLink('CurrentLocationName') CurrentLocationName: string = ""
   aboutToAppear(): void {
     let CurrentDate = new Date()
@@ -200,7 +195,34 @@ struct Index {
     });
     context.stroke();
   }
-
+  // 更新信息
+  async updateInfo(index: number) {
+    // 通过网络请求数据
+    let currentWeather = await NetworkDataFetcher.getRealtimeWeather(this.ShownCities[index].Location);
+    let hourlyWeather = await NetworkDataFetcher.getHourlyWeather(this.ShownCities[index].Location);
+    let dailyWeather = await NetworkDataFetcher.getDailyWeather(this.ShownCities[index].Location);
+    let airQuality = await NetworkDataFetcher.getAirQuality(this.ShownCities[index].Location);
+    let weatherIndex = await NetworkDataFetcher.getWeatherIndex(this.ShownCities[index].Location);
+    // 删除数据库中的数据
+    await StoreManager.deleteCurrentWeather(getContext(this),this.CurrentWeathers[index])
+    await StoreManager.deleteHourlyWeathers(getContext(this),this.AllHourlyWeathers[index])
+    await StoreManager.deleteDailyWeathers(getContext(this),this.AllDailyWeathers[index])
+    await StoreManager.deleteRealtimeAirQuality(getContext(this),this.CurrentAirQualities[index])
+    await StoreManager.deleteWeatherIndex(getContext(this),this.AllWeatherIndexes[index])
+    // 添加数据
+    await StoreManager.addCurrentWeather(getContext(this),currentWeather)
+    await StoreManager.addHourlyWeathers(getContext(this),hourlyWeather)
+    await StoreManager.addDailyWeathers(getContext(this),dailyWeather)
+    await StoreManager.addRealtimeAirQuality(getContext(this),airQuality)
+    await StoreManager.addWeatherIndex(getContext(this),weatherIndex)
+    // 刷新数据
+    this.CurrentWeathers[index] = currentWeather;
+    this.AllHourlyWeathers[index] = hourlyWeather;
+    this.AllDailyWeathers[index] = dailyWeather;
+    this.CurrentAirQualities[index] = airQuality;
+    this.AllWeatherIndexes[index] = weatherIndex;
+    console.info('模拟器-更新数据')
+  }
   //构建菜单按钮
   @Builder menu() {
     SymbolGlyph($r('sys.symbol.dot_grid_2x2'))
@@ -220,38 +242,10 @@ struct Index {
         {
           value: '桌面天气',
           action: async () => {
-            this.ShownCities.push({
-              id: null,
-              Name: '门头沟',
-              Location: '116.10538,39.93718',
-              LocationId: '101011400'
+            router.pushUrl({
+              url: 'pages/Desktop'
             })
-            await StoreManager.addShownCity(getContext(this),{
-              id: null,
-              Name: '门头沟',
-              Location: '116.10538,39.93718',
-              LocationId: '101011400'
-            }as ShownCity)
-            this.yOffset.push(0)
-            let locationId = this.ShownCities[this.ShownCities.length-1].LocationId;
-            let location = this.ShownCities[this.ShownCities.length-1].Location;
-            // 获取实时天气信息
-            let currentWeather = await NetworkDataFetcher.getRealtimeWeather(locationId);
-            // 获取逐小时天气预报
-            let hourlyWeather = await NetworkDataFetcher.getHourlyWeather(locationId);
-            // 获取每日天气预报
-            let dailyWeather = await NetworkDataFetcher.getDailyWeather(locationId);
-            // 获取实时空气质量信息
-            let airQuality = await NetworkDataFetcher.getAirQuality(location);
-            // 获取天气指数
-            let weatherIndex = await NetworkDataFetcher.getWeatherIndex(locationId);
-            this.CurrentWeathers.push(currentWeather)
-            this.AllHourlyWeathers.push(hourlyWeather)
-            this.AllDailyWeathers.push(dailyWeather)
-            this.CurrentAirQualities.push(airQuality)
-            this.AllWeatherIndexes.push(weatherIndex)
             console.info('模拟器-桌面天气')
-            console.info('模拟器'+JSON.stringify(this.CurrentWeathers.length))
           }
         },
       ])
@@ -282,7 +276,6 @@ struct Index {
       .width('100%')
       .onWillScroll((xOffset: number, yOffset: number, scrollState: ScrollState) => {
         this.yOffset[this.index] += yOffset
-        console.info('模拟器-onWillScroll'+this.yOffset[this.index])
       })
     }
     .onStateChange((refreshStatus: RefreshStatus) => {
@@ -293,25 +286,9 @@ struct Index {
       console.info('Refresh onOffsetChange offset is ' + offset)
     })
     .onRefreshing(async () => {
-      let locationId = this.ShownCities[this.index].LocationId;
-      let location = this.ShownCities[this.index].Location;
-      // 获取实时天气信息
-      let currentWeather = await NetworkDataFetcher.getRealtimeWeather(locationId);
-      // 获取逐小时天气预报
-      let hourlyWeather = await NetworkDataFetcher.getHourlyWeather(locationId);
-      // 获取每日天气预报
-      let dailyWeather = await NetworkDataFetcher.getDailyWeather(locationId);
-      // 获取实时空气质量信息
-      let airQuality = await NetworkDataFetcher.getAirQuality(location);
-      // 获取天气指数
-      let weatherIndex = await NetworkDataFetcher.getWeatherIndex(locationId);
-      this.CurrentWeathers[this.index]=currentWeather
-      this.AllHourlyWeathers[this.index]=hourlyWeather
-      this.AllDailyWeathers[this.index]=dailyWeather
-      this.CurrentAirQualities[this.index]=airQuality
-      this.AllWeatherIndexes[this.index]=weatherIndex
+      await this.updateInfo(index)
       this.isRefreshing=false
-      console.log('模拟器onRefreshing')
+      console.log('模拟器更新信息')
     })
     .refreshOffset(64)
     .pullToRefresh(true)
@@ -907,7 +884,7 @@ struct Index {
             this.WeatherBuilder(index)
           }
           .tabBar(this.tabBuilder(index))
-        })
+        },(item: ShownCity)=>item.Location)
       }
       .onChange((index: number)=>{
         this.index = index

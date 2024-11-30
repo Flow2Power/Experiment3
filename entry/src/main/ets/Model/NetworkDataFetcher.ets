@@ -9,6 +9,8 @@ import {
   RealtimeAirQuality,
   RealtimeAirQualityResponse,
   RealtimeWeather, RealtimeWeatherResponse,
+  ShownCity,
+  topCityResponse,
   WeatherIndex,
   WeatherIndexResponse } from './DataInterface';
 import { BusinessError } from '@kit.BasicServicesKit';
@@ -32,6 +34,8 @@ export class NetworkDataFetcher {
   // 实时天气信息
   public static async getRealtimeWeather(location: string): Promise<RealtimeWeather> {
     let realtimeWeather:RealtimeWeather= {
+      id: null,
+      Location: '',
       obsTime: '',
       temp: '',
       feelsLike: '',
@@ -47,14 +51,15 @@ export class NetworkDataFetcher {
       vis: '',
       cloud: '',
       dew: '',
-      fxLink: ''
+      fxLink: '',
     }
     try {
       let response =await NetworkDataFetcher.session.get(`https://devapi.qweather.com/v7/weather/now?key=${NetworkDataFetcher.key}&location=${location}`)
       let data: RealtimeWeatherResponse = response.toJSON() as RealtimeWeatherResponse
       realtimeWeather = data.now
       realtimeWeather.fxLink = data.fxLink
-      // console.info('模拟器获取实时天气成功'+JSON.stringify(realtimeWeather))
+      realtimeWeather.Location = location
+      console.info('模拟器获取实时天气成功'+JSON.stringify(realtimeWeather))
     }catch (err){
       let error: BusinessError = err as BusinessError;
       console.error(`模拟器获取实时天气失败: Code is ${error.code}, message is ${error.message}`)
@@ -69,7 +74,10 @@ export class NetworkDataFetcher {
       let data: HourlyWeatherResponse = response.toJSON() as HourlyWeatherResponse
       hourlyWeathers = data.hourly
       hourlyWeathers[0].fxLink = data.fxLink
-      // console.info('模拟器获取逐小时天气预报成功'+JSON.stringify(hourlyWeathers))
+      hourlyWeathers.forEach(item => {
+        item.Location = location
+      })
+      console.info('模拟器获取逐小时天气预报成功'+JSON.stringify(hourlyWeathers))
     }catch (err){
       let error: BusinessError = err as BusinessError;
       console.error(`模拟器获取逐小时天气预报失败: Code is ${error.code}, message is ${error.message}`)
@@ -84,7 +92,10 @@ export class NetworkDataFetcher {
       let data: DailyWeatherResponse = response.toJSON() as DailyWeatherResponse
       dailyWeather = data.daily
       dailyWeather[0].fxLink = data.fxLink
-      // console.info('模拟器获取每日天气预报成功'+JSON.stringify(dailyWeather))
+      dailyWeather.forEach(item => {
+        item.Location = location
+      })
+      console.info('模拟器获取每日天气预报成功'+JSON.stringify(dailyWeather))
     }catch (err){
      let error: BusinessError = err as BusinessError;
      console.error(`模拟器获取每日天气预报失败: Code is ${error.code}, message is ${error.message}`)
@@ -94,11 +105,12 @@ export class NetworkDataFetcher {
   // 实时空气质量
   public static async getAirQuality(location: string): Promise<RealtimeAirQuality> {
     let realtimeAirQuality:RealtimeAirQuality= {
+      id: null,
+      Location: '',
       pubTime: '',
       aqi: 0,
       level: '',
       category: '',
-      primary: '',
       pm10: '',
       pm2p5: '',
       no2: '',
@@ -110,9 +122,20 @@ export class NetworkDataFetcher {
     try {
       let response =await NetworkDataFetcher.session.get(`https://devapi.qweather.com/v7/air/now?key=${NetworkDataFetcher.key}&location=${location}`)
       let data: RealtimeAirQualityResponse = response.toJSON() as RealtimeAirQualityResponse
-      realtimeAirQuality = data.now
+      // 由于有不需要的primary,故进行单个赋值
+      realtimeAirQuality.aqi = data.now.aqi
+      realtimeAirQuality.level = data.now.level
+      realtimeAirQuality.category = data.now.category
+      realtimeAirQuality.pm10 = data.now.pm10
+      realtimeAirQuality.pm2p5 = data.now.pm2p5
+      realtimeAirQuality.no2 = data.now.no2
+      realtimeAirQuality.so2 = data.now.so2
+      realtimeAirQuality.co = data.now.co
+      realtimeAirQuality.o3 = data.now.o3
       realtimeAirQuality.fxLink = data.fxLink
-      // console.info('模拟器获取实时空气质量成功'+JSON.stringify(realtimeAirQuality))
+      realtimeAirQuality.Location = location
+      realtimeAirQuality.pubTime = data.now.pubTime
+      console.info('模拟器获取实时空气质量成功'+JSON.stringify(realtimeAirQuality))
     }catch (err){
       let error: BusinessError =err as BusinessError;
       console.error(`模拟器获取空气质量失败: Code is ${error.code}, message is ${error.message}`)
@@ -127,12 +150,36 @@ export class NetworkDataFetcher {
       let data:WeatherIndexResponse= response.toJSON() as WeatherIndexResponse
       weatherIndex = data.daily
       weatherIndex[0].fxLink = data.fxLink
-      // console.info('模拟器获取天气指数成功'+JSON.stringify(weatherIndex))
+      weatherIndex.forEach(item => {
+        item.Location = location
+      })
+      console.info('模拟器获取天气指数成功'+JSON.stringify(weatherIndex))
     }catch (err){
       let error:BusinessError = err as BusinessError;
       console.error(`模拟器获取天气指数失败: Code is ${error.code}, message is ${error.message}`)
     }
     return weatherIndex
+  }
+  // 热门城市列表
+  public static async getRecommendedCities(): Promise<ShownCity[]> {
+    let recommendedCities: ShownCity[] = []
+    try {
+      let response = await NetworkDataFetcher.session.get(`https://geoapi.qweather.com/v2/city/top?key=${NetworkDataFetcher.key}&range=cn`)
+      let data: topCityResponse = response.toJSON() as topCityResponse
+      data.topCityList.forEach(item => {
+        recommendedCities.push({
+          id: null,
+          Name: item.name,
+          Location: item.lon+','+item.lat,
+          LocationId: item.id,
+        })
+      })
+      console.info('模拟器获取热门城市列表成功'+JSON.stringify(recommendedCities))
+    }catch (err){
+      let error: BusinessError = err as BusinessError;
+      console.error(`模拟器获取热门城市列表失败: Code is ${error.code}, message is ${error.message}`)
+    }
+    return recommendedCities;
   }
 }
 export default NetworkDataFetcher;

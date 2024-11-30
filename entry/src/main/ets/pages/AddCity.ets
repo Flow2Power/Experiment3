@@ -1,46 +1,72 @@
 import { router } from '@kit.ArkUI'
-import { DailyWeather, HourlyWeather, RealtimeAirQuality, RealtimeWeather,
+import {
+  CityInfo,
+  DailyWeather, HourlyWeather, RealtimeAirQuality, RealtimeWeather,
   ShownCity,
   WeatherIndex } from '../Model/DataInterface';
+import NetworkDataFetcher from '../Model/NetworkDataFetcher';
+import StoreManager from '../Model/StoreManager';
+
 @Entry
 @Component
 struct AddCity {
   @State searchText:string=""
-  @State RecommendedCities: ShownCity[] = [{
-    id: null,
-    Name: '定位中',
-    Location: '0,0',
-    LocationId: '101010100'
-  }]
-  @State CityList: ShownCity[] = [{
-    id: null,
-    Name: '定位中',
-    Location: '0,0',
-    LocationId: '101010100'
-  },{
-    id: null,
-    Name: '定位中',
-    Location: '0,0',
-    LocationId: '101010100'
-  },{
-    id: null,
-    Name: '定位中',
-    Location: '0,0',
-    LocationId: '101010100'
-  }]
+  @State CityList: ShownCity[] = []
+  @StorageLink('RecommendedCities') RecommendedCities: ShownCity[] = []
+  @StorageLink('yOffset') yOffset: number[] = []
   @StorageLink('CurrentLocation') CurrentLocation: string = ""
   @StorageLink('CurrentWeathers') CurrentWeathers: RealtimeWeather[] = []
   @StorageLink('AllHourlyWeathers') AllHourlyWeathers: Array<HourlyWeather[]> = []
   @StorageLink('AllDailyWeathers') AllDailyWeathers: Array<DailyWeather[]> = []
   @StorageLink('CurrentAirQualities') CurrentAirQualities: RealtimeAirQuality[] = []
   @StorageLink('AllWeatherIndexes') AllWeatherIndexes: Array<WeatherIndex[]> = []
-  @StorageLink('ShownCities') ShownCities: ShownCity[] = [{
-    id: null,
-    Name: '定位中',
-    Location: '0,0',
-    LocationId: '101010100'
-  }]
+  @StorageLink('ShownCities') ShownCities: ShownCity[] = []
   @StorageLink('CurrentLocationName') CurrentLocationName: string = ""
+
+  async aboutToAppear(): Promise<void> {
+    console.info('模拟器添加城市-aboutToAppear')
+    this.CityList= this.RecommendedCities
+  }
+  // 搜索城市
+  async SearchCity() {
+    let cityInfo:CityInfo[]= await NetworkDataFetcher.getCityInfo(this.searchText)
+    this.CityList=[]
+    cityInfo.forEach(item => {
+      this.CityList.push({
+        id: null,
+        Name: item.name,
+        Location: item.lon+','+item.lat,
+        LocationId: item.id
+      })
+    })
+  }
+  // 添加城市
+  async AddCity(city:ShownCity) {
+    // 通过网络请求数据
+    let currentWeather = await NetworkDataFetcher.getRealtimeWeather(city.Location);
+    let hourlyWeather = await NetworkDataFetcher.getHourlyWeather(city.Location);
+    let dailyWeather = await NetworkDataFetcher.getDailyWeather(city.Location);
+    let airQuality = await NetworkDataFetcher.getAirQuality(city.Location);
+    let weatherIndex = await NetworkDataFetcher.getWeatherIndex(city.Location);
+    // 存储数据
+    await StoreManager.addShownCity(getContext(this),city)
+    await StoreManager.addCurrentWeather(getContext(this),currentWeather)
+    await StoreManager.addHourlyWeathers(getContext(this),hourlyWeather)
+    await StoreManager.addDailyWeathers(getContext(this),dailyWeather)
+    await StoreManager.addRealtimeAirQuality(getContext(this),airQuality)
+    await StoreManager.addWeatherIndex(getContext(this),weatherIndex)
+    // 更新数据
+    this.ShownCities.push(city)
+    this.yOffset.push(0)
+    this.CurrentWeathers.push(currentWeather)
+    this.AllHourlyWeathers.push(hourlyWeather)
+    this.AllDailyWeathers.push(dailyWeather)
+    this.CurrentAirQualities.push(airQuality)
+    this.AllWeatherIndexes.push(weatherIndex)
+    console.info('模拟器添加城市'+city.Name)
+    console.info('模拟器ShownCities'+JSON.stringify(this.ShownCities))
+    router.back({ url: 'pages/Index'})
+  }
   build() {
     Column(){
       Row({space: 20}){
@@ -68,8 +94,13 @@ struct AddCity {
         .onSubmit((value: string) => {
           console.log('搜索内容:'+ value);
         })
-        .onChange((value: string) => {
+        .onChange(async (value: string) => {
           this.searchText = value
+          if(this.searchText.length==0){
+            this.ShownCities = this.RecommendedCities
+          }else{
+            this.SearchCity()
+          }
         })
       Row(){
         Text(`${this.searchText?"全部城市":"推荐城市"}`)
@@ -90,16 +121,21 @@ struct AddCity {
               .fontSize(20)
               .width('90%')
               .fontColor(Color.White)
+              .opacity(0.8)
               .textAlign(TextAlign.Start)
               .margin({left:'5%'})
           }
           .height('5%')
-        })
+          .onClick(async ()=>{
+            this.AddCity(item)
+          })
+        },(item:ShownCity)=>item.Name)
       }
       .width('95%')
       .height('85%')
       .divider({strokeWidth:1,color:Color.Grey})
       .alignListItem(ListItemAlign.Start)
+      .scrollBar(BarState.Off)
     }
     .width('100%')
     .height('100%')

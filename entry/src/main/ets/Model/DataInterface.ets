@@ -30,7 +30,9 @@ interface Source {
   sources: string[];
   license: string[];
 }
-export interface RealtimeWeather {
+export interface RealtimeWeather extends ValuesBucket {
+  id:number|null;
+  Location: string;
   obsTime: string;
   temp: string;
   feelsLike: string;
@@ -60,7 +62,9 @@ interface Refer {
   sources: string[];
   license: string[];
 }
-export interface HourlyWeather {
+export interface HourlyWeather extends ValuesBucket {
+  id:number|null;
+  Location: string;
   fxTime: string;
   temp: string;
   icon: string;
@@ -85,7 +89,9 @@ export interface HourlyWeatherResponse {
   refer: Refer;
 }
 //每日天气预报数据接口
-export interface DailyWeather {
+export interface DailyWeather extends ValuesBucket {
+  id:number|null;
+  Location: string;
   fxDate: string;
   sunrise: string;
   sunset: string;
@@ -138,12 +144,13 @@ interface AirQualityStation {
   co: string;
   o3: string;
 }
-export interface RealtimeAirQuality {
+export interface RealtimeAirQuality extends ValuesBucket {
+  id:number|null;
+  Location: string;
   pubTime: string;
   aqi: number;
   level: string;
   category: string;
-  primary: string;
   pm10: string;
   pm2p5: string;
   no2: string;
@@ -161,7 +168,9 @@ export interface RealtimeAirQualityResponse {
   refer: Refer
 }
 //天气指数数据接口
-export interface WeatherIndex {
+export interface WeatherIndex extends ValuesBucket {
+  id:number|null;
+  Location: string;
   date: string;       // 日期
   type: string;       // 指数类型
   name: string;       // 指数名称
@@ -191,4 +200,30 @@ export interface WeatherData {
   dailyWeather: DailyWeather[];
   airQuality: RealtimeAirQuality;
   weatherIndex: WeatherIndex[];
+}
+//热门城市列表
+// DataInterface.ts
+export interface TopCity {
+  name: string;
+  id: string;
+  lat: string;
+  lon: string;
+  adm2: string;
+  adm1: string;
+  country: string;
+  tz: string;
+  utcOffset: string;
+  isDst: string;
+  type: string;
+  rank: string;
+  fxLink: string;
+}
+export interface ReferSources {
+  sources: string[];
+  license: string[];
+}
+export interface topCityResponse {
+  code: string;
+  topCityList: TopCity[];
+  refer: ReferSources;
 }
