@@ -4,6 +4,7 @@
     "pages/Cities",
     "pages/Splash",
     "pages/AddCity",
-    "pages/Desktop"
+    "pages/Desktop",
+    "pages/WebInfo"
   ]
 }

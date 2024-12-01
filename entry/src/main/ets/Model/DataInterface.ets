@@ -201,8 +201,7 @@ export interface WeatherData {
   airQuality: RealtimeAirQuality;
   weatherIndex: WeatherIndex[];
 }
-//热门城市列表
-// DataInterface.ts
+//热门城市
 export interface TopCity {
   name: string;
   id: string;
@@ -227,3 +226,20 @@ export interface topCityResponse {
   topCityList: TopCity[];
   refer: ReferSources;
 }
+//桌面卡片
+export interface CardData {
+  ShownCityName: string;
+  CurrentLocationName: string;
+  tempMax: number;
+  tempMin: number;
+  weather: string;
+  airLevel: string;
+  date: string;
+  week: string;
+  weatherIcon: string;
+  category1: string;
+  category2: string;
+  category3: string;
+  category4: string;
+}
+

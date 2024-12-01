@@ -7,7 +7,7 @@ import PreferencesManager from '../Model/PreferencesManager';
 @Entry
 @Component
 struct Desktop {
-  @State ShownCityName:string = ""
+  @StorageLink('ShownCityName') ShownCityName: string = ""
   @State index:number = 0
   @State isLocalItemChecked: boolean = true // 新增状态变量
   @State CityList:ShownCity[]=[]
@@ -22,13 +22,12 @@ struct Desktop {
 
   async aboutToAppear(): Promise<void> {
     console.info('模拟器Desktop-aboutToAppear')
-    this.ShownCityName = await PreferencesManager.getShownCity(getContext(this))
-    if(this.ShownCityName==""){
-      this.ShownCityName = this.CurrentLocationName;
-    }
     this.index = this.ShownCities.findIndex(city => city.Name === this.ShownCityName);
+    console.info('模拟器Desktop-aboutToAppear-ShownCities:',JSON.stringify(this.ShownCities))
     this.isLocalItemChecked = this.ShownCityName == this.CurrentLocationName;
-    this.CityList=this.ShownCities;
+    this.ShownCities.forEach((city:ShownCity) => {
+      this.CityList.push(city)
+    })
     this.CityList.push({
       id:null,
       Name:"添加城市",
@@ -96,6 +95,7 @@ struct Desktop {
           if (isOn) {
             this.ShownCityName = this.CurrentLocationName;
             PreferencesManager.putShownCity(this.ShownCityName,getContext(this));
+            PreferencesManager.putShownCityLocation(this.CurrentLocation, getContext(this));
             this.index = this.ShownCities.findIndex(city => city.Name === this.ShownCityName);
           }
         })
@@ -120,6 +120,7 @@ struct Desktop {
           if (isChecked) {
             this.ShownCityName = item.Name;
             PreferencesManager.putShownCity(this.ShownCityName,getContext(this));
+            PreferencesManager.putShownCityLocation(item.Location, getContext(this));
             this.index = this.ShownCities.findIndex(city => city.Name === item.Name);
             this.isLocalItemChecked = false; // 确保 LocalItem 不被选中
           }

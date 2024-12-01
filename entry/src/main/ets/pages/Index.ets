@@ -33,12 +33,12 @@ struct Index {
   '暴风',
   '飓风'
 ];
-  @StorageLink('CurrentLocation') CurrentLocation: string = ""
   private context: CanvasRenderingContext2D = new CanvasRenderingContext2D(new RenderingContextSettings(true));
   private offContext: OffscreenCanvasRenderingContext2D = new OffscreenCanvasRenderingContext2D(600, 600, new RenderingContextSettings(true))
   private ItemWith: number = 80
   private ItemStart: number = 40
   //页面信息显示相关的状态变量
+  @StorageLink('CurrentLocation') CurrentLocation: string = ""
   @StorageLink('CurrentWeathers') CurrentWeathers: RealtimeWeather[] = []
   @StorageLink('AllHourlyWeathers') AllHourlyWeathers: Array<HourlyWeather[]> = []
   @StorageLink('AllDailyWeathers') AllDailyWeathers: Array<DailyWeather[]> = []
@@ -46,6 +46,10 @@ struct Index {
   @StorageLink('AllWeatherIndexes') AllWeatherIndexes: Array<WeatherIndex[]> = []
   @StorageLink('ShownCities') ShownCities: ShownCity[] = []
   @StorageLink('CurrentLocationName') CurrentLocationName: string = ""
+  @StorageLink('WebName') WebName: string = ""
+  @StorageLink('WebTitle') WebTitle: string = ""
+  @StorageLink('WebLink') WebLink: string = ""
+  @StorageLink('ShownTexts') ShownTexts: string[] = []
   aboutToAppear(): void {
     let CurrentDate = new Date()
     let hours=CurrentDate.getHours()
@@ -113,6 +117,24 @@ struct Index {
     }
     return differenceInMinutes;
 }
+  //获取颜色
+  getAQIColor(aqi: number): [number, number, number] {
+    if (aqi >= 0 && aqi <= 50) {
+      return [0, 228, 0]; // 优
+    } else if (aqi >= 51 && aqi <= 100) {
+      return [255, 255, 0]; // 良
+    } else if (aqi >= 101 && aqi <= 150) {
+      return [255, 126, 0]; // 轻度污染
+    } else if (aqi >= 151 && aqi <= 200) {
+      return [255, 0, 0]; // 中度污染
+    } else if (aqi >= 201 && aqi <= 300) {
+      return [153, 0, 76]; // 重度污染
+    } else if (aqi >= 301 && aqi <= 500) {
+      return [126, 0, 35]; // 严重污染
+    } else {
+      throw new Error("Invalid AQI value");
+    }
+  }
   // 渲染函数
   render(context: CanvasRenderingContext2D,index: number){
     // 确定绘制比例
@@ -257,19 +279,19 @@ struct Index {
         Column(){
           this.CurrentWeatherBuilder(index)
           this.HourlyWeatherBuilder(index)
-          this.TitleBuilder("近日天气",5,0)
+          this.TitleBuilder("近日天气",5,0,index,"")
           this.DailyWeatherBuilder(index)
-          this.TitleBuilder("",2,0)
+          this.TitleBuilder("",2,0,index,"")
           this.MoreDailyWeatherBuilder(index)
-          this.TitleBuilder("空气质量",5,0.8)
+          this.TitleBuilder("空气质量",5,0.8,index,this.CurrentAirQualities[index]?.fxLink)
           this.CurrentAirQualityBuilder(index)
-          this.TitleBuilder("舒适度",5,0.8)
+          this.TitleBuilder("舒适度",5,0.8,index,this.AllWeatherIndexes[index]?.[0]?.fxLink)
           this.ComfortBuilder(index)
-          this.TitleBuilder("风向风力",5,0.8)
+          this.TitleBuilder("风向风力",5,0,index,"")
           this.WindBuilder(index)
-          this.TitleBuilder("日出日落",5,0.8)
+          this.TitleBuilder("日出日落",5,0,index,"")
           this.SunriseSunsetBuilder(index)
-          this.TitleBuilder("",4,0)
+          this.TitleBuilder("",4,0,index,"")
           this.FooterBuilder()
         }
       }
@@ -303,7 +325,7 @@ struct Index {
       .width(20)
   }
   //构建标题空格行
-  @Builder TitleBuilder(title:string,height:number,opacity:number) {
+  @Builder TitleBuilder(title:string,height:number,opacity:number,index:number,link:string) {
     Row(){
       Text(title)
         .fontSize(20)
@@ -319,6 +341,18 @@ struct Index {
     .height(`${height}%`)
     .alignItems(VerticalAlign.Center)
     .justifyContent(FlexAlign.SpaceBetween)
+    .onClick(()=>{
+      if(link){
+        this.WebName = this.ShownCities[index].Name
+        this.WebTitle = title=="舒适度"?"生活指数":"空气质量"
+        this.WebLink = link
+        console.info('模拟器加载网址'+JSON.stringify(link))
+        router.pushUrl({
+          url: 'pages/WebInfo'
+        })
+        console.info('模拟器-进入WebInfo')
+      }
+    })
   }
   //空气质量半扇型进度条构建
   @Builder CurrentAirQualityGaugeBuilder(index:number){
@@ -342,7 +376,17 @@ struct Index {
       .startAngle(210)
       .endAngle(150)
       .strokeWidth(10)
-      .colors([[Color.Green, this.CurrentAirQualities[index]?.aqi/500], ['#99fdfdfd', 1 - this.CurrentAirQualities[index]?.aqi/500]])
+      .colors([
+        [
+          this.CurrentAirQualities[index]?.category == "优" ? "#00e400" :
+            this.CurrentAirQualities[index]?.category == "良" ? "#ffff00" :
+              this.CurrentAirQualities[index]?.category == "轻度污染" ? "#ff7e00" :
+                this.CurrentAirQualities[index]?.category == "中度污染" ? "#ff0000" :
+                  this.CurrentAirQualities[index]?.category == "重度污染" ? "#99004c" :
+                    this.CurrentAirQualities[index]?.category == "严重污染" ? "#7e0023" : Color.White,
+          this.CurrentAirQualities[index]?.aqi / 500
+        ],
+        ['#99fdfdfd', 1 - this.CurrentAirQualities[index]?.aqi/500]])
       .indicator(null)
       .trackShadow(null)
       .description(null)
@@ -450,37 +494,70 @@ struct Index {
   }
   //构建逐小时天气预报
   @Builder HourlyWeatherBuilder(index: number) {
-    List(){
-      ForEach(this.AllHourlyWeathers[index],(item: HourlyWeather, index:number)=>{
-        ListItem(){
-          Column({space: 20}){
-            Text(`${this.extractTimeFromObsTime(item.fxTime)}`)
-              .fontSize(20)
-              .fontColor(Color.White)
-              .fontWeight(FontWeight.Bold)
-            Image($r(`app.media.${item.icon}`))
-              .fillColor(Color.White)
-              .width(30)
-              .height(30)
-            Text(item.temp+"℃")
-              .fontSize(20)
-              .fontColor(Color.White)
-              .fontWeight(FontWeight.Bold)
+    Column(){
+      Marquee({
+        start: true,
+        step: -1,
+        loop: 50,
+        fromStart: true,
+        src:this.ShownTexts[index]
+      })
+        .width('95%')
+        .height('15%')
+        .fontSize(16)
+        .fontColor(Color.White)
+        .fontWeight(FontWeight.Bold)
+        .border({
+          width: { bottom: 1 },
+          color: { bottom: Color.Grey },
+        })
+      List(){
+        ForEach(this.AllHourlyWeathers[index],(item: HourlyWeather, index:number)=>{
+          ListItem(){
+            Column({space: 20}){
+              Text(`${this.extractTimeFromObsTime(item.fxTime)}`)
+                .fontSize(20)
+                .fontColor(Color.White)
+                .fontWeight(FontWeight.Bold)
+              Image($r(`app.media.${item.icon}`))
+                .fillColor(Color.White)
+                .width(30)
+                .height(30)
+              Text(item.temp+"℃")
+                .fontSize(20)
+                .fontColor(Color.White)
+                .fontWeight(FontWeight.Bold)
+            }
+            .width(80)
+            .height('20%')
+            .margin({top:'5%'})
+            .alignItems(HorizontalAlign.Center)
+            .justifyContent(FlexAlign.Start)
           }
-          .width(80)
-          .height('20%')
-          .margin({top:'5%'})
-          .alignItems(HorizontalAlign.Center)
-          .justifyContent(FlexAlign.Start)
-        }
+        })
+      }
+      .width('100%')
+      .height('80%')
+      .listDirection(Axis.Horizontal)
+      .alignListItem(ListItemAlign.Start)
+      .scrollBar(BarState.Off)
+      .onClick(() => {
+        this.WebName=this.ShownCities[index].Name
+        this.WebTitle="逐小时天气预报"
+        this.WebLink=this.AllHourlyWeathers[index]?.[0].fxLink
+        console.info('模拟器加载网址'+JSON.stringify(this.WebLink))
+        router.pushUrl({
+          url: 'pages/WebInfo',
+        })
+        console.info('模拟器进入WebInfo')
       })
     }
     .width('95%')
-    .height('20%')
+    .height('25%')
     .borderRadius(10)
     .backgroundColor('#996d6d6d')
-    .listDirection(Axis.Horizontal)
-    .alignListItem(ListItemAlign.Start)
+    .alignItems(HorizontalAlign.Center)
+    .justifyContent(FlexAlign.Center)
   }
   //构建每日天气预报
   @Builder DailyWeatherBuilder(index:number) {
@@ -514,6 +591,16 @@ struct Index {
     .backgroundColor('#996d6d6d')
     .alignItems(VerticalAlign.Center)
     .justifyContent(FlexAlign.Center)
+    .onClick(() => {
+      this.WebName=this.ShownCities[index].Name
+      this.WebTitle="天气"
+      this.WebLink=this.AllDailyWeathers[index]?.[0].fxLink
+      console.info('模拟器加载网址'+JSON.stringify(this.WebLink))
+      router.pushUrl({
+        url: 'pages/WebInfo',
+      })
+      console.info('模拟器进入WebInfo')
+    })
   }
   //构建实时空气质量信息
   @Builder CurrentAirQualityBuilder(index: number) {
@@ -596,6 +683,15 @@ struct Index {
     .justifyContent(FlexAlign.Center)
     .borderRadius(10)
     .backgroundColor('#996d6d6d')
+    .onClick(() => {
+      this.WebName=this.ShownCities[index].Name
+      this.WebTitle="空气质量"
+      this.WebLink=this.CurrentAirQualities[index]?.fxLink
+      console.info('模拟器加载网址'+JSON.stringify(this.WebLink))
+      router.pushUrl({
+        url: 'pages/WebInfo',
+      })
+    })
   }
   //构建舒适度信息
   @Builder ComfortBuilder(index: number) {
@@ -708,6 +804,16 @@ struct Index {
     .justifyContent(FlexAlign.Center)
     .borderRadius(10)
     .backgroundColor('#996d6d6d')
+    .onClick(() => {
+      this.WebName=this.ShownCities[index].Name
+      this.WebTitle="生活指数"
+      this.WebLink=this.AllWeatherIndexes[index]?.[0]?.fxLink
+      console.info('模拟器加载网址'+JSON.stringify(this.WebLink))
+      router.pushUrl({
+        url: 'pages/WebInfo',
+      })
+      console.info('模拟器进入WebInfo')
+    })
   }
   //构建风向风力
   @Builder WindBuilder(index: number) {

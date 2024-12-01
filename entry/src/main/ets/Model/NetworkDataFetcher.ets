@@ -18,6 +18,24 @@ import { BusinessError } from '@kit.BasicServicesKit';
 export class NetworkDataFetcher {
   private static key: string = '589e95d506024b67b892ac138ef465ec';
   private static session = rcp.createSession();
+  public static modifyFxLinkToAdd30d(fxLink: string): string {
+    // 找到第一个 "weather" 的位置
+    const firstWeatherIndex = fxLink.indexOf("weather");
+    if (firstWeatherIndex === -1) {
+      console.error("URL 中未找到 'weather'");
+      return fxLink;
+    }
+    // 从第一个 "weather" 的位置之后开始查找第二个 "weather"
+    const secondWeatherIndex = fxLink.indexOf("weather", firstWeatherIndex + "weather".length);
+    if (secondWeatherIndex === -1) {
+      console.error("URL 中未找到第二个 'weather'");
+      return fxLink;
+    }
+    // 在第二个 "weather" 后面插入 "30d"
+    const modifiedLink = fxLink.slice(0, secondWeatherIndex + "weather".length) + "30d" + fxLink.slice(secondWeatherIndex + "weather".length);
+    return modifiedLink;
+  }
+
   // 城市搜索
   public static async getCityInfo(location: string): Promise<CityInfo[]> {
     let CityInfos: CityInfo[] = [];
@@ -70,7 +88,7 @@ export class NetworkDataFetcher {
   public static async getHourlyWeather(location: string): Promise<HourlyWeather[]> {
     let hourlyWeathers: HourlyWeather[] = [];
     try {
-      let response =await NetworkDataFetcher.session.get(`https://devapi.qweather.com/v7/weather/24h?key=${NetworkDataFetcher.key}&location=${location}`)
+      let response =await NetworkDataFetcher.session.get(`https://devapi.qweather.com/v7/weather/24h?key=${NetworkDataFetcher.key}&location=${location}&lang=zh-hans`)
       let data: HourlyWeatherResponse = response.toJSON() as HourlyWeatherResponse
       hourlyWeathers = data.hourly
       hourlyWeathers[0].fxLink = data.fxLink
@@ -88,10 +106,10 @@ export class NetworkDataFetcher {
   public static async getDailyWeather(location: string): Promise<DailyWeather[]> {
     let dailyWeather: DailyWeather[] = []
     try {
-      let response =await NetworkDataFetcher.session.get(`https://devapi.qweather.com/v7/weather/7d?key=${NetworkDataFetcher.key}&location=${location}`)
+      let response =await NetworkDataFetcher.session.get(`https://devapi.qweather.com/v7/weather/7d?key=${NetworkDataFetcher.key}&location=${location}&lang=zh-hans`)
       let data: DailyWeatherResponse = response.toJSON() as DailyWeatherResponse
       dailyWeather = data.daily
-      dailyWeather[0].fxLink = data.fxLink
+      dailyWeather[0].fxLink = NetworkDataFetcher.modifyFxLinkToAdd30d(data.fxLink)
       dailyWeather.forEach(item => {
         item.Location = location
       })
@@ -120,7 +138,7 @@ export class NetworkDataFetcher {
       fxLink: ''
     }
     try {
-      let response =await NetworkDataFetcher.session.get(`https://devapi.qweather.com/v7/air/now?key=${NetworkDataFetcher.key}&location=${location}`)
+      let response =await NetworkDataFetcher.session.get(`https://devapi.qweather.com/v7/air/now?key=${NetworkDataFetcher.key}&location=${location}&lang=zh-hans`)
       let data: RealtimeAirQualityResponse = response.toJSON() as RealtimeAirQualityResponse
       // 由于有不需要的primary,故进行单个赋值
       realtimeAirQuality.aqi = data.now.aqi
@@ -146,7 +164,7 @@ export class NetworkDataFetcher {
   public static async getWeatherIndex(location: string): Promise<WeatherIndex[]> {
     let weatherIndex: WeatherIndex[]=[]
     try {
-      let response =await NetworkDataFetcher.session.get(`https://devapi.qweather.com/v7/indices/1d?key=${NetworkDataFetcher.key}&location=${location}&type=0`)
+      let response =await NetworkDataFetcher.session.get(`https://devapi.qweather.com/v7/indices/1d?key=${NetworkDataFetcher.key}&location=${location}&type=0&lang=zh-hans`)
       let data:WeatherIndexResponse= response.toJSON() as WeatherIndexResponse
       weatherIndex = data.daily
       weatherIndex[0].fxLink = data.fxLink

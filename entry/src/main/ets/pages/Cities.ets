@@ -26,7 +26,7 @@ struct Cities {
   @StorageLink('CurrentAirQualities') CurrentAirQualities: RealtimeAirQuality[] = []
   @StorageLink('AllWeatherIndexes') AllWeatherIndexes: Array<WeatherIndex[]> = []
   @StorageLink('ShownCities') ShownCities: ShownCity[] = []
-
+  @StorageLink('ShownTexts') ShownTexts: string[] = []
 
   @StorageLink('CurrentLocationName') CurrentLocationName: string = "北京"
   @Builder Card(item:ShownCity){
@@ -44,7 +44,6 @@ struct Cities {
       Column(){
         Row(){
           Text(`${this.CurrentWeathers[this.ShownCities.findIndex(city => city.Location === item.Location)]?.temp}`)
-          // Text("℃")
             .fontSize(40)
             .fontColor(Color.White)
             .textAlign(TextAlign.Center)
@@ -57,7 +56,6 @@ struct Cities {
         .alignItems(VerticalAlign.Top)
         .justifyContent(FlexAlign.Start)
         Text(`${this.CurrentWeathers[this.ShownCities.findIndex(city => city.Location === item.Location)]?.text}`)
-        // Text("℃")
         .fontSize(15)
         .fontColor(Color.White)
         .textAlign(TextAlign.Center)
@@ -80,7 +78,7 @@ struct Cities {
         console.info('模拟器删除城市'+JSON.stringify(item))
         let index = this.ShownCities.findIndex(city => city.Location === item.Location);
         if (index !== -1) {
-          animateTo({duration:1000,curve: Curve.EaseIn}, async ()=>{
+          animateTo({duration:2000}, async ()=>{
             // // 删除数据库中数据
             await StoreManager.deleteShownCity(getContext(this),item)
             await StoreManager.deleteCurrentWeather(getContext(this),this.CurrentWeathers[index])
@@ -90,12 +88,14 @@ struct Cities {
             await StoreManager.deleteWeatherIndex(getContext(this),this.AllWeatherIndexes[index])
             // 使用 filter 方法创建新数组
             this.yOffset = this.yOffset.filter((_, idx) => idx !== index);
+            this.yOffset=new Array(this.ShownCities.length).fill(0)
             this.ShownCities = this.ShownCities.filter((city, idx) => idx !== index);
             this.CurrentWeathers = this.CurrentWeathers.filter((weather, idx) => idx !== index);
             this.AllHourlyWeathers = this.AllHourlyWeathers.filter((hourlyWeathers, idx) => idx !== index);
             this.AllDailyWeathers = this.AllDailyWeathers.filter((dailyWeathers, idx) => idx !== index);
             this.CurrentAirQualities = this.CurrentAirQualities.filter((airQuality, idx) => idx !== index);
             this.AllWeatherIndexes = this.AllWeatherIndexes.filter((weatherIndex, idx) => idx !== index);
+            this.ShownTexts = this.ShownTexts.filter((text, idx) => idx !== index);
           });
         }
       })

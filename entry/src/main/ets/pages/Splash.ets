@@ -4,6 +4,7 @@ import { CityInfo, DailyWeather, HourlyWeather, RealtimeAirQuality, RealtimeWeat
   WeatherData,
   WeatherIndex } from '../Model/DataInterface';
 import NetworkDataFetcher from '../Model/NetworkDataFetcher';
+import PreferencesManager from '../Model/PreferencesManager';
 import StoreManager from '../Model/StoreManager';
 import { reqPermissionsFromUser } from '../ViewModel/PermissionsDialog';
 
@@ -20,7 +21,8 @@ struct Splash {
   @StorageLink('AllDailyWeathers') AllDailyWeathers: Array<DailyWeather[]> = []
   @StorageLink('CurrentAirQualities') CurrentAirQualities: RealtimeAirQuality[] = []
   @StorageLink('AllWeatherIndexes') AllWeatherIndexes: Array<WeatherIndex[]> = []
-
+  @StorageLink('ShownCityName') ShownCityName: string = ""
+  @StorageLink('ShownTexts') ShownTexts: string[] = []
   async aboutToAppear() {
     console.info('模拟器Splash-aboutToAppear')
     this.RecommendedCities = await NetworkDataFetcher.getRecommendedCities()
@@ -36,6 +38,14 @@ struct Splash {
         LocationId: CurrentCityInfo[0].id
       }as ShownCity)
       this.ShownCities = await StoreManager.getShownCities(getContext(this))
+    }
+    this.CurrentLocation = this.ShownCities[0].Location
+    this.ShownCityName = await PreferencesManager.getShownCity(getContext(this))
+    if(this.ShownCityName==""){
+      this.ShownCityName = this.CurrentLocationName;
+      await PreferencesManager.putShownCity(this.ShownCityName,getContext(this));
+      await PreferencesManager.putShownCityLocation(this.CurrentLocation, getContext(this));
+      await PreferencesManager.putLocationName(this.CurrentLocationName, getContext(this))
     }
     this.yOffset=new Array(this.ShownCities.length).fill(0)
     // 先从数据库全部尝试一次获取，没有再从网络获取
@@ -113,8 +123,14 @@ struct Splash {
         const weatherIndexes = allWeatherIndexes.filter(index => index.Location === city.Location);
         this.AllWeatherIndexes.push(weatherIndexes)
       });
-
     }
+    this.AllWeatherIndexes.forEach((weatherIndexes: WeatherIndex[], index: number) => {
+      let shownText: string = '';
+      weatherIndexes.forEach((weatherIndex: WeatherIndex) => {
+        shownText = shownText + weatherIndex.text + '   ';
+      })
+      this.ShownTexts.push(shownText);
+    })
     router.replaceUrl({ url: 'pages/Index'});
   }
   build() {

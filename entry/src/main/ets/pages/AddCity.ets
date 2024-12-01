@@ -22,6 +22,7 @@ struct AddCity {
   @StorageLink('AllWeatherIndexes') AllWeatherIndexes: Array<WeatherIndex[]> = []
   @StorageLink('ShownCities') ShownCities: ShownCity[] = []
   @StorageLink('CurrentLocationName') CurrentLocationName: string = ""
+  @StorageLink('ShownTexts') ShownTexts: string[] = []
 
   async aboutToAppear(): Promise<void> {
     console.info('模拟器添加城市-aboutToAppear')
@@ -63,6 +64,11 @@ struct AddCity {
     this.AllDailyWeathers.push(dailyWeather)
     this.CurrentAirQualities.push(airQuality)
     this.AllWeatherIndexes.push(weatherIndex)
+    let shownText: string = '';
+    weatherIndex.forEach((weatherIndex: WeatherIndex) => {
+      shownText = shownText + weatherIndex.text + '   ';
+    })
+    this.ShownTexts.push(shownText);
     console.info('模拟器添加城市'+city.Name)
     console.info('模拟器ShownCities'+JSON.stringify(this.ShownCities))
     router.back({ url: 'pages/Index'})

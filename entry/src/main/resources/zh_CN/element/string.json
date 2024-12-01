@@ -10,7 +10,23 @@
     },
     {
       "name": "EntryAbility_label",
-      "value": "label"
+      "value": "Wetterauge"
+    },
+    {
+      "name": "EntryFormAbility_desc",
+      "value": "form_description"
+    },
+    {
+      "name": "EntryFormAbility_label",
+      "value": "form_label"
+    },
+    {
+      "name": "widget_desc",
+      "value": "这是一个用于预报明日天气的服务卡片"
+    },
+    {
+      "name": "widget_display_name",
+      "value": "明日天气预报"
     }
   ]
 }
