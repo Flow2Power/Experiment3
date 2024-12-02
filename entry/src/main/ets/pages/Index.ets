@@ -109,7 +109,10 @@ struct Index {
       let date1 = new Date(0, 0, 0, hours1, minutes1, 0);
       let date2 = new Date(0, 0, 0, hours2, minutes2, 0);
       // 计算时间差（以毫秒为单位）
-      let differenceInMilliseconds = Math.abs(date2?.getTime() - date1?.getTime());
+      let differenceInMilliseconds = date2?.getTime() - date1?.getTime();
+      if(differenceInMilliseconds<0){
+        return 0
+      }
       // 将时间差转换为分钟数
       differenceInMinutes = differenceInMilliseconds / (1000 * 60);
       console.info('模拟器时间差：' + differenceInMinutes + '分钟');
@@ -137,6 +140,7 @@ struct Index {
   }
   // 渲染函数
   render(context: CanvasRenderingContext2D,index: number){
+    console.info('绘制第' + index + '个天气')
     // 确定绘制比例
     let height: number = 250;
     let maxTemperature: number = -Infinity;
@@ -308,6 +312,8 @@ struct Index {
       console.info('Refresh onOffsetChange offset is ' + offset)
     })
     .onRefreshing(async () => {
+      this.context.clearRect(0,0,600,600)
+      this.render(this.context,index)
       await this.updateInfo(index)
       this.isRefreshing=false
       console.log('模拟器更新信息')
@@ -568,6 +574,7 @@ struct Index {
         .onReady(()=>{
           this.render(this.context,index)
         })
+
     }
     .width('95%')
     .height('45%')

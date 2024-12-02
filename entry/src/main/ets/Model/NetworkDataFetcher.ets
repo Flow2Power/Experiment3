@@ -16,7 +16,7 @@ import {
 import { BusinessError } from '@kit.BasicServicesKit';
 
 export class NetworkDataFetcher {
-  private static key: string = '589e95d506024b67b892ac138ef465ec';
+  private static key: string = '';
   private static session = rcp.createSession();
   public static modifyFxLinkToAdd30d(fxLink: string): string {
     // 找到第一个 "weather" 的位置

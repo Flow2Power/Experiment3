@@ -1,5 +1,4 @@
 import { ValuesBucket } from "@kit.ArkData";
-
 //城市搜索数据接口
 interface ReferInfo {
   sources: string[];  // 数据来源
